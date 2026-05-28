@@ -1,0 +1,16 @@
+# P2P File Share - Requirements
+# This project uses only Python standard library - no external dependencies required!
+# 
+# Python version: 3.6 or higher
+#
+# Standard library modules used:
+# - socket: Network communication
+# - threading: Multi-threaded operations
+# - json: Metadata serialization
+# - os: File system operations
+# - datetime: Timestamp generation
+# - pathlib: Path utilities
+# - tkinter: Desktop GUI (included with Python on most systems)
+# - subprocess: Open file explorer (optional, for cross-platform compatibility)
+#
+# No pip packages needed to run this application!
