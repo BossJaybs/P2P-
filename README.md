@@ -27,10 +27,10 @@ A simple peer-to-peer file sharing application with a desktop GUI built using Py
 python main.py
 ```
 
-Or run it from the repository root:
+Or run it from the repository root (recommended when using the package imports):
 
 ```bash
-python p2p_file_share/main.py
+python -m p2p_file_share.main
 ```
 
 ## Usage
@@ -43,10 +43,10 @@ If you are already inside the `p2p_file_share` directory:
 python main.py
 ```
 
-If you are at the repository root:
+If you are at the repository root (recommended):
 
 ```bash
-python p2p_file_share/main.py
+python -m p2p_file_share.main
 ```
 
 The application window will open with the P2P File Share GUI.
@@ -58,6 +58,33 @@ The application window will open with the P2P File Share GUI.
 3. Enter the peer's **IP address** (e.g., 192.168.1.100)
 4. Enter the peer's **port** (default: 5555)
 5. Click **Send File** to initiate the transfer
+
+### Remote Browse & Request (GUI and CLI)
+
+This project now supports browsing files that a remote peer is sharing and requesting downloads directly.
+
+GUI:
+- On the **Send File** tab click **Browse Remote**.
+- Enter the peer IP and port, click **Fetch List**.
+- Select a file from the list and click **Request Selected** to download it to your download directory.
+
+CLI Examples:
+
+List files on a remote peer:
+```bash
+python list_cli.py <peer_ip> <peer_port>
+```
+
+Request a file from a remote peer:
+```bash
+python request_cli.py <peer_ip> <peer_port> <filename>
+```
+
+Headless server (run without GUI):
+```bash
+python run_server.py [port]
+```
+
 
 ### Receiving a File
 
