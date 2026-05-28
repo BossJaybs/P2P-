@@ -59,6 +59,33 @@ The application window will open with the P2P File Share GUI.
 4. Enter the peer's **port** (default: 5555)
 5. Click **Send File** to initiate the transfer
 
+### Remote Browse & Request (GUI and CLI)
+
+This project now supports browsing files that a remote peer is sharing and requesting downloads directly.
+
+GUI:
+- On the **Send File** tab click **Browse Remote**.
+- Enter the peer IP and port, click **Fetch List**.
+- Select a file from the list and click **Request Selected** to download it to your download directory.
+
+CLI Examples:
+
+List files on a remote peer:
+```bash
+python list_cli.py <peer_ip> <peer_port>
+```
+
+Request a file from a remote peer:
+```bash
+python request_cli.py <peer_ip> <peer_port> <filename>
+```
+
+Headless server (run without GUI):
+```bash
+python run_server.py [port]
+```
+
+
 ### Receiving a File
 
 The application automatically listens for incoming files on port 5555. When a peer sends you a file:
