@@ -27,10 +27,10 @@ A simple peer-to-peer file sharing application with a desktop GUI built using Py
 python main.py
 ```
 
-Or run it from the repository root:
+Or run it from the repository root (recommended when using the package imports):
 
 ```bash
-python p2p_file_share/main.py
+python -m p2p_file_share.main
 ```
 
 ## Usage
@@ -43,10 +43,10 @@ If you are already inside the `p2p_file_share` directory:
 python main.py
 ```
 
-If you are at the repository root:
+If you are at the repository root (recommended):
 
 ```bash
-python p2p_file_share/main.py
+python -m p2p_file_share.main
 ```
 
 The application window will open with the P2P File Share GUI.

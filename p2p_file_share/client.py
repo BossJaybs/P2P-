@@ -2,6 +2,7 @@ import socket
 import json
 import os
 import threading
+from .file_manager import FileManager
 
 
 class P2PClient:
@@ -96,3 +97,75 @@ class P2PClient:
             self._emit(f"Error: Connection refused by {peer_ip}:{peer_port}")
         except Exception as e:
             self._emit(f"Error sending file: {str(e)}")
+
+    def list_files(self, peer_ip: str, peer_port: int) -> list:
+        """Request list of shared files from a peer."""
+        try:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.connect((peer_ip, peer_port))
+            # Send LIST action
+            metadata = json.dumps({'action': 'LIST'}).encode('utf-8')
+            metadata_padded = metadata + b' ' * (1024 - len(metadata))
+            sock.send(metadata_padded[:1024])
+
+            resp = self._recv_all(sock, 1024)
+            sock.close()
+            if not resp:
+                return []
+            data = json.loads(resp.decode('utf-8').strip() or '{}')
+            return data.get('files', [])
+        except Exception as e:
+            self._emit(f"Error requesting file list: {str(e)}")
+            return []
+
+    def request_file(self, peer_ip: str, peer_port: int, filename: str):
+        """Request a single file from peer and save it to downloads."""
+        try:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.connect((peer_ip, peer_port))
+            metadata = json.dumps({'action': 'GET', 'filename': filename}).encode('utf-8')
+            metadata_padded = metadata + b' ' * (1024 - len(metadata))
+            sock.send(metadata_padded[:1024])
+
+            # Receive metadata about the file
+            meta = self._recv_all(sock, 1024)
+            if not meta:
+                self._emit("No response from peer")
+                sock.close()
+                return
+
+            info = json.loads(meta.decode('utf-8').strip() or '{}')
+            if 'error' in info:
+                self._emit(f"Peer error: {info.get('error')}")
+                sock.close()
+                return
+
+            filename = info['filename']
+            filesize = info['filesize']
+            self._emit(f"Receiving '{filename}' ({filesize} bytes) from {peer_ip}")
+
+            # Save to download dir
+            # If FileManager methods available, use it; else save in cwd
+            try:
+                fm = FileManager()
+                savepath = fm.get_safe_filepath(filename)
+            except Exception:
+                savepath = filename
+
+            received = 0
+            with open(savepath, 'wb') as f:
+                while received < filesize:
+                    chunk = sock.recv(min(4096, filesize - received))
+                    if not chunk:
+                        break
+                    f.write(chunk)
+                    received += len(chunk)
+
+            if received == filesize:
+                self._emit(f"File '{filename}' received successfully")
+            else:
+                self._emit(f"Error: Incomplete transfer for '{filename}'")
+
+            sock.close()
+        except Exception as e:
+            self._emit(f"Error requesting file: {str(e)}")

@@ -2,7 +2,7 @@ import socket
 import threading
 import json
 import os
-from file_manager import FileManager
+from .file_manager import FileManager
 
 
 class P2PServer:
@@ -63,20 +63,64 @@ class P2PServer:
     def _handle_client(self, client_socket: socket.socket, client_ip: str, client_port: int):
         """Handle individual client connection."""
         try:
-            # Receive metadata
+            # Receive metadata (determine action)
             metadata_json = self._recv_all(client_socket, 1024)
             if not metadata_json:
                 return
-            
+
             metadata = json.loads(metadata_json.decode('utf-8'))
+            action = metadata.get('action', 'SEND')
+
+            if action == 'LIST':
+                # Return list of shared files
+                files = self.file_manager.list_shared_files()
+                response = json.dumps({'files': files}).encode('utf-8')
+                response_padded = response + b' ' * (1024 - len(response))
+                client_socket.send(response_padded[:1024])
+                return
+
+            if action == 'GET':
+                filename = metadata.get('filename')
+                if not filename:
+                    client_socket.send(json.dumps({'error': 'no filename'}).encode('utf-8') + b' ' * 900)
+                    return
+
+                filepath = self.file_manager.get_shared_filepath(filename)
+                if not os.path.exists(filepath):
+                    err = json.dumps({'error': 'file not found'}).encode('utf-8')
+                    client_socket.send(err + b' ' * (1024 - len(err)))
+                    return
+
+                filesize = os.path.getsize(filepath)
+                # Send metadata to requester
+                meta = json.dumps({'filename': filename, 'filesize': filesize}).encode('utf-8')
+                meta_padded = meta + b' ' * (1024 - len(meta))
+                client_socket.send(meta_padded[:1024])
+
+                # Send file bytes
+                with open(filepath, 'rb') as f:
+                    while True:
+                        chunk = f.read(4096)
+                        if not chunk:
+                            break
+                        client_socket.sendall(chunk)
+
+                # Signal completion
+                try:
+                    client_socket.send(b'COMPLETE')
+                except:
+                    pass
+                return
+
+            # Default: handle incoming SEND (peer sending file to this server)
             filename = metadata['filename']
             filesize = metadata['filesize']
-            
+
             self._emit(f"Receiving '{filename}' ({filesize} bytes) from {client_ip}")
-            
+
             # Get safe filepath
             filepath = self.file_manager.get_safe_filepath(filename)
-            
+
             # Receive file
             received = 0
             with open(filepath, 'wb') as f:
@@ -87,18 +131,30 @@ class P2PServer:
                         break
                     f.write(chunk)
                     received += len(chunk)
-                    
+
                     # Send progress
                     progress = int((received / filesize) * 100)
-                    client_socket.send(f"{progress}".encode('utf-8'))
-            
+                    try:
+                        client_socket.send(f"{progress}".encode('utf-8'))
+                    except:
+                        pass
+
             if received == filesize:
                 self._emit(f"File '{filename}' received successfully")
-                client_socket.send(b"COMPLETE")
+                try:
+                    client_socket.send(b"COMPLETE")
+                except:
+                    pass
             else:
                 self._emit(f"Error: Incomplete transfer for '{filename}'")
-                os.remove(filepath)
-                client_socket.send(b"ERROR")
+                try:
+                    os.remove(filepath)
+                except:
+                    pass
+                try:
+                    client_socket.send(b"ERROR")
+                except:
+                    pass
         
         except Exception as e:
             self._emit(f"Error handling client: {str(e)}")

@@ -8,7 +8,12 @@ Run this file to start the application:
 """
 
 import tkinter as tk
-from gui import P2PFileShareGUI
+try:
+    # When run as module: python -m p2p_file_share.main
+    from .gui import P2PFileShareGUI
+except Exception:
+    # When run as script from inside package folder: python main.py
+    from gui import P2PFileShareGUI
 
 
 def main():

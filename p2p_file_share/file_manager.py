@@ -11,8 +11,12 @@ class FileManager:
         if download_dir is None:
             download_dir = os.path.join(os.path.expanduser("~"), "P2P_Downloads")
         
+        # Directory where incoming files are saved
         self.download_dir = download_dir
+        # Directory for files you want to share with peers
+        self.shared_dir = os.path.join(os.path.expanduser("~"), "P2P_Shared")
         self._ensure_download_dir()
+        self._ensure_shared_dir()
     
     def _ensure_download_dir(self):
         """Create download directory if it doesn't exist."""
@@ -55,3 +59,17 @@ class FileManager:
         if not os.path.exists(self.download_dir):
             return []
         return os.listdir(self.download_dir)
+
+    def _ensure_shared_dir(self):
+        """Create shared directory if it doesn't exist."""
+        os.makedirs(self.shared_dir, exist_ok=True)
+
+    def list_shared_files(self) -> list:
+        """Return list of files available for sharing."""
+        if not os.path.exists(self.shared_dir):
+            return []
+        return [f for f in os.listdir(self.shared_dir) if os.path.isfile(os.path.join(self.shared_dir, f))]
+
+    def get_shared_filepath(self, filename: str) -> str:
+        """Resolve shared file path (no auto-renaming)."""
+        return os.path.join(self.shared_dir, filename)

@@ -2,9 +2,10 @@ import tkinter as tk
 from tkinter import ttk, filedialog, messagebox, scrolledtext
 import socket
 import os
-from server import P2PServer
-from client import P2PClient
-from file_manager import FileManager
+import threading
+from .server import P2PServer
+from .client import P2PClient
+from .file_manager import FileManager
 
 
 class P2PFileShareGUI:
@@ -67,6 +68,10 @@ class P2PFileShareGUI:
         
         browse_button = ttk.Button(file_frame, text="Browse", command=self._browse_file)
         browse_button.pack(side=tk.RIGHT, padx=5)
+
+        # Remote browse button (opens list of shared files on remote peer)
+        remote_button = ttk.Button(file_frame, text="Browse Remote", command=self._browse_remote)
+        remote_button.pack(side=tk.RIGHT, padx=5)
         
         # Peer connection
         peer_frame = ttk.LabelFrame(parent, text="Peer Connection", padding=10)
@@ -172,6 +177,72 @@ class P2PFileShareGUI:
             filename = os.path.basename(filepath)
             self.file_label.config(text=filename, foreground="black")
             self._log_message(f"Selected file: {filename}")
+
+    def _browse_remote(self):
+        """Open a dialog to list files from the remote peer and allow requesting one."""
+        # Create dialog window
+        dlg = tk.Toplevel(self.root)
+        dlg.title("Remote Files")
+        dlg.geometry("500x400")
+
+        # Peer inputs
+        frame = ttk.Frame(dlg)
+        frame.pack(fill=tk.X, padx=10, pady=8)
+
+        ttk.Label(frame, text="Peer IP:").grid(row=0, column=0, sticky=tk.W)
+        ip_var = tk.StringVar(value=self.peer_ip_var.get())
+        ip_entry = ttk.Entry(frame, textvariable=ip_var, width=20)
+        ip_entry.grid(row=0, column=1, sticky=tk.W, padx=5)
+
+        ttk.Label(frame, text="Port:").grid(row=0, column=2, sticky=tk.W, padx=(10,0))
+        port_var = tk.StringVar(value=self.peer_port_var.get())
+        port_entry = ttk.Entry(frame, textvariable=port_var, width=8)
+        port_entry.grid(row=0, column=3, sticky=tk.W, padx=5)
+
+        fetch_btn = ttk.Button(frame, text="Fetch List", command=lambda: threading.Thread(target=self._fetch_remote_files, args=(ip_var.get(), port_var.get(), listbox, fetch_btn), daemon=True).start())
+        fetch_btn.grid(row=0, column=4, sticky=tk.W, padx=10)
+
+        # Files list
+        listbox = tk.Listbox(dlg, height=15)
+        listbox.pack(fill=tk.BOTH, expand=True, padx=10, pady=8)
+
+        btn_frame = ttk.Frame(dlg)
+        btn_frame.pack(fill=tk.X, padx=10, pady=6)
+
+        request_btn = ttk.Button(btn_frame, text="Request Selected", command=lambda: threading.Thread(target=self._request_selected_remote, args=(ip_var.get(), port_var.get(), listbox), daemon=True).start())
+        request_btn.pack(side=tk.RIGHT)
+
+        close_btn = ttk.Button(btn_frame, text="Close", command=dlg.destroy)
+        close_btn.pack(side=tk.RIGHT, padx=6)
+
+    def _fetch_remote_files(self, ip, port, listbox, button):
+        """Fetch file list from peer and populate the listbox."""
+        try:
+            self._log_message(f"Requesting file list from {ip}:{port}...")
+            files = self.client.list_files(ip, int(port))
+            def update():
+                listbox.delete(0, tk.END)
+                for f in files:
+                    listbox.insert(tk.END, f)
+                button.config(state=tk.NORMAL)
+            self.root.after(0, update)
+            self._log_message(f"Received {len(files)} files from {ip}")
+        except Exception as e:
+            self._log_message(f"Failed to fetch list: {e}")
+            self.root.after(0, lambda: button.config(state=tk.NORMAL))
+
+    def _request_selected_remote(self, ip, port, listbox):
+        """Request the file currently selected in the listbox."""
+        try:
+            sel = listbox.curselection()
+            if not sel:
+                self._log_message("No file selected")
+                return
+            filename = listbox.get(sel[0])
+            self._log_message(f"Requesting '{filename}' from {ip}:{port}")
+            self.client.request_file(ip, int(port), filename)
+        except Exception as e:
+            self._log_message(f"Request failed: {e}")
     
     def _send_file(self):
         """Send selected file to peer."""
