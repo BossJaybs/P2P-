@@ -67,6 +67,7 @@ GUI:
 - On the **Send File** tab click **Browse Remote**.
 - Enter the peer IP and port, click **Fetch List**.
 - Select a file from the list and click **Request Selected** to download it to your download directory.
+- The remote list shows files that the peer has explicitly shared plus files it has already received in its download folder.
 
 CLI Examples:
 

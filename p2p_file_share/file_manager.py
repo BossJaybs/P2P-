@@ -65,10 +65,31 @@ class FileManager:
         os.makedirs(self.shared_dir, exist_ok=True)
 
     def list_shared_files(self) -> list:
-        """Return list of files available for sharing."""
-        if not os.path.exists(self.shared_dir):
-            return []
-        return [f for f in os.listdir(self.shared_dir) if os.path.isfile(os.path.join(self.shared_dir, f))]
+        """Return list of files available for remote browsing.
+
+        The remote browser should show both explicitly shared files and files
+        that were previously received into the download directory so peers can
+        discover content that has already landed on the machine.
+        """
+        files = []
+        seen = set()
+
+        for directory in (self.shared_dir, self.download_dir):
+            if not os.path.exists(directory):
+                continue
+
+            for filename in os.listdir(directory):
+                filepath = os.path.join(directory, filename)
+                if not os.path.isfile(filepath):
+                    continue
+
+                if filename in seen:
+                    continue
+
+                seen.add(filename)
+                files.append(filename)
+
+        return sorted(files)
 
     def get_shared_filepath(self, filename: str) -> str:
         """Resolve shared file path (no auto-renaming)."""
